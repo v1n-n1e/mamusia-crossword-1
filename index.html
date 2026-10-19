@@ -1,0 +1,592 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="A crossword made for Mamusia.">
+<title>Mamusia Crossword 1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700;800&family=Zilla+Slab:wght@600;700&display=swap">
+<style>
+/* Layout: newspaper-games chrome. Toolbar rule on top, grid + clue bar left, two scrolling clue columns right; one column with a docked keyboard on phones. */
+:root {
+  --bg: #ffffff;
+  --ink: #121212;
+  --muted: #6b6b6b;
+  --rule: #d9d9d9;
+  --grid-line: #959595;
+  --cell: #ffffff;
+  --block: #121212;
+  --sel: #ffda00;
+  --sel-ink: #121212;
+  --word: #a7d8ff;
+  --ref: #dcefff;
+  --bar: #dcefff;
+  --checked: #2860d8;
+  --wrong: #e63333;
+  --chrome: #f4f4f4;
+  --key: #ffffff;
+  --key-edge: #c8c8c8;
+  --overlay: rgba(255,255,255,.94);
+  --accent: #4f85e5;
+  --party-1: #ffcf33; --party-2: #4f85e5; --party-3: #ef5a5a; --party-4: #48b77d; --party-5: #ff8fc6;
+  --string: #8a8a8a;
+  --font-ui: "Libre Franklin", "Franklin Gothic Medium", "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Zilla Slab", Rockwell, "Roboto Slab", Georgia, serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161616; --ink: #f0f0f0; --muted: #a3a3a3; --rule: #333333; --grid-line: #4d4d4d;
+    --cell: #262626; --block: #050505; --sel: #e8c400; --sel-ink: #121212; --word: #2f5577;
+    --ref: #253547; --bar: #22384d; --checked: #7fa8ff; --wrong: #ff5a5a; --chrome: #1f1f1f;
+    --key: #2e2e2e; --key-edge: #111111; --overlay: rgba(22,22,22,.95); --accent: #7fa8ff;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #161616; --ink: #f0f0f0; --muted: #a3a3a3; --rule: #333333; --grid-line: #4d4d4d;
+  --cell: #262626; --block: #050505; --sel: #e8c400; --sel-ink: #121212; --word: #2f5577;
+  --ref: #253547; --bar: #22384d; --checked: #7fa8ff; --wrong: #ff5a5a; --chrome: #1f1f1f;
+  --key: #2e2e2e; --key-edge: #111111; --overlay: rgba(22,22,22,.95); --accent: #7fa8ff;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { background: var(--bg); color: var(--ink); }
+html, body { margin: 0; }
+body { font-family: var(--font-ui); font-size: 15px; -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; }
+button:focus-visible, .cell:focus-visible, li:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.wrap { max-width: 1120px; margin: 0 auto; padding-inline: 16px; padding-block: 36px 40px; }
+
+header.masthead { display: flex; flex-wrap: nowrap; align-items: flex-start; gap: 6px 20px; padding-bottom: 16px; }
+.masthead h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(26px, 4.4vw, 38px); line-height: 1.05; margin: 0; letter-spacing: -.01em; text-wrap: balance; }
+.masthead .byline { font-size: 14px; color: var(--muted); display: flex; gap: 14px; flex-wrap: wrap; }
+.masthead .byline b { color: var(--ink); font-weight: 600; }
+
+.toolbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--bg);
+  border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule);
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; }
+.timer { display: flex; align-items: center; gap: 6px; font-weight: 700; font-variant-numeric: tabular-nums; font-size: 17px; min-width: 96px; }
+.iconbtn { border: 0; background: none; padding: 6px; border-radius: 4px; cursor: pointer; display: inline-grid; place-items: center; }
+.iconbtn:hover { background: var(--chrome); }
+.tools { display: flex; gap: 2px; }
+.menu-wrap { position: relative; }
+.toolbtn { border: 0; background: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: 500; font-size: 15px; }
+.toolbtn:hover, .toolbtn[aria-expanded="true"] { background: var(--chrome); }
+.menu { position: absolute; right: 0; top: calc(100% + 4px); background: var(--bg); border: 1px solid var(--rule);
+  box-shadow: 0 6px 20px rgba(0,0,0,.15); border-radius: 4px; min-width: 170px; padding: 4px 0; z-index: 30; }
+.menu button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 9px 16px; cursor: pointer; font-size: 14px; }
+.menu button:hover { background: var(--chrome); }
+
+.play { position: relative; display: grid; grid-template-columns: minmax(0, 580px) minmax(0, 1fr); gap: 32px; margin-top: 18px; align-items: start; }
+.board-col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.cluebar { background: var(--bar); min-height: 58px; display: flex; align-items: center; gap: 14px; padding: 10px 16px; border-radius: 2px; font-size: 17px; line-height: 1.3; }
+.cluebar .lab { font-weight: 800; flex: none; min-width: 34px; }
+.cluebar .txt { min-width: 0; }
+
+.board { container-type: inline-size; position: relative; width: 100%; max-width: 100%; aspect-ratio: 1; background: var(--grid-line);
+  border: 2px solid var(--ink); display: grid; grid-template-columns: repeat(var(--w), 1fr); grid-template-rows: repeat(var(--h), 1fr); gap: 1px;
+  user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+.cell { position: relative; background: var(--cell); cursor: pointer; overflow: hidden; }
+.cell.block { background: var(--block); cursor: default; }
+.cell.ref { background: var(--ref); }
+.cell.word { background: var(--word); }
+.cell.sel { background: var(--sel); color: var(--sel-ink); }
+.cell .num { position: absolute; top: 2%; left: 5%; font-size: 2.15cqw; line-height: 1; font-weight: 500; pointer-events: none; }
+.cell .let { position: absolute; inset: 0; display: grid; place-items: end center; padding-bottom: 4%; font-size: 4.3cqw; line-height: 1; font-weight: 500; pointer-events: none; }
+.cell.correct .let, .cell.revealed .let { color: var(--checked); }
+.cell.sel.correct .let, .cell.sel.revealed .let { color: #1a4fb8; }
+.cell.wrong::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(to top right, transparent calc(50% - .9px), var(--wrong) calc(50% - .9px), var(--wrong) calc(50% + .9px), transparent calc(50% + .9px)); }
+.cell.revealed::before { content: ""; position: absolute; top: 0; right: 0; width: 26%; height: 26%; background: var(--wrong);
+  clip-path: polygon(0 0, 100% 0, 100% 100%); pointer-events: none; }
+
+.clues { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; min-width: 0; }
+.cluelist { min-width: 0; }
+.cluelist h2 { font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; margin: 0; padding-bottom: 8px; border-bottom: 1px solid var(--rule); }
+.cluelist ol { list-style: none; margin: 0; padding: 4px 0 0; overflow-y: auto; max-height: var(--list-h, 560px); scrollbar-width: thin; }
+.cluelist li { display: flex; gap: 10px; padding: 7px 10px 7px 8px; border-left: 8px solid transparent; cursor: pointer; line-height: 1.35; font-size: 15px; }
+.cluelist li .n { font-weight: 700; min-width: 22px; text-align: right; flex: none; }
+.cluelist li .t { min-width: 0; }
+.cluelist li.done .t { color: var(--muted); }
+.cluelist li.ref { background: var(--ref); }
+.cluelist li.cross { border-left-color: var(--word); }
+.cluelist li.active { background: var(--word); }
+.cluelist li.active .t { color: inherit; }
+
+.cover { position: absolute; inset: -6px; z-index: 15; background: var(--overlay); display: grid; place-items: start center; padding-top: min(18vh, 160px); }
+.cover-card { text-align: center; max-width: 380px; padding-inline: 16px; display: grid; gap: 12px; justify-items: center; }
+.cover-card .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.cover-card h2 { font-family: var(--font-display); font-size: 30px; margin: 0; line-height: 1.1; text-wrap: balance; }
+.cover-card p { margin: 0; color: var(--muted); line-height: 1.45; }
+.pill { border: 0; background: var(--ink); color: var(--bg); border-radius: 999px; padding: 13px 38px; font-weight: 700; font-size: 16px; cursor: pointer; margin-top: 6px; }
+.pill.ghost { background: none; color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+
+.modal-bg { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,.45); display: grid; place-items: center; padding: 16px; }
+.modal { background: var(--bg); border-radius: 6px; max-width: 420px; width: 100%; padding: 30px 26px 24px; text-align: center; display: grid; gap: 12px; justify-items: center; box-shadow: 0 20px 50px rgba(0,0,0,.3); }
+.modal h2 { font-family: var(--font-display); font-size: 30px; margin: 0; line-height: 1.1; text-wrap: balance; }
+.modal p { margin: 0; color: var(--muted); line-height: 1.45; }
+.modal .btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 4px; }
+.modal .pill { padding: 11px 28px; font-size: 15px; }
+
+.hint { margin-top: 28px; color: var(--muted); font-size: 13px; line-height: 1.6; }
+.hint kbd { font-family: var(--font-ui); font-size: 12px; border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 3px; padding: 0 5px; color: var(--ink); }
+
+#confetti { position: fixed; inset: 0; pointer-events: none; z-index: 70; width: 100%; height: 100%; }
+
+/* Folk-flower ornament (wycinanki style) */
+.masthead .titles { display: grid; gap: 6px; min-width: 0; flex: 1 1 0; }
+.masthead .party { font-family: var(--font-display); font-weight: 700; font-size: 17px; letter-spacing: .02em; color: var(--party-3); }
+.masthead .flower { flex: none; width: 92px; height: 92px; }
+.cover .flower { width: 64px; height: 64px; }
+@media (max-width: 560px) { .masthead .flower { width: 64px; height: 64px; } }
+
+/* Phone / tablet layouts */
+.kb { display: none; }
+@media (max-width: 900px) {
+  .play { grid-template-columns: minmax(0, 1fr); gap: 22px; }
+  .board-col { max-width: 600px; width: 100%; margin: 0 auto; }
+  .cluelist ol { max-height: 360px; }
+}
+@media (max-width: 560px) {
+  .clues { grid-template-columns: minmax(0, 1fr); }
+  .toolbtn { padding: 8px 9px; font-size: 14px; }
+  .play { margin-top: 12px; }
+  .wrap { padding-block: 14px 24px; }
+}
+body.touch .kb { display: block; position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; background: var(--chrome);
+  padding: 0 0 calc(6px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--rule); }
+body.touch .wrap { padding-bottom: 250px; }
+body.touch .board-col .cluebar { display: none; }
+body.touch .hint { display: none; }
+.kb .cluebar { border-radius: 0; min-height: 52px; padding: 8px 6px; font-size: 16px; gap: 6px; cursor: pointer; }
+.kb .cluebar .txt { flex: 1; }
+.kb .rows { display: grid; gap: 7px; padding: 8px 4px 0; max-width: 560px; margin: 0 auto; }
+.kb .row { display: flex; gap: 5px; justify-content: center; }
+.kb .key { flex: 1 1 0; max-width: 48px; height: 46px; border: 0; border-radius: 5px; background: var(--key); box-shadow: 0 1px 0 var(--key-edge);
+  font-weight: 500; font-size: 19px; cursor: pointer; touch-action: manipulation; padding: 0; }
+.kb .key:active { background: var(--word); }
+.kb .key.wide { flex-grow: 1.6; max-width: 76px; display: grid; place-items: center; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="masthead">
+    <div class="titles">
+      <div class="party">For Mamusia</div>
+      <h1>Mamusia Crossword 1</h1>
+      <div class="byline"><span>By <b>Vincent Mirisch</b></span><span>October 2026</span></div>
+    </div>
+    <svg class="flower" viewBox="-50 -50 100 100" aria-hidden="true"></svg>
+  </header>
+
+  <div class="toolbar">
+    <div class="timer">
+      <span id="time">0:00</span>
+      <button class="iconbtn" id="pauseBtn" aria-label="Pause">
+        <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><rect x="4" y="3" width="3.2" height="12" rx="1" fill="currentColor"/><rect x="10.8" y="3" width="3.2" height="12" rx="1" fill="currentColor"/></svg>
+      </button>
+    </div>
+    <div class="tools">
+      <div class="menu-wrap">
+        <button class="toolbtn" id="clearBtn" aria-haspopup="true" aria-expanded="false">Clear</button>
+        <div class="menu" id="clearMenu" hidden>
+          <button data-act="clear-word">Word</button>
+          <button data-act="clear-puzzle">Puzzle</button>
+          <button data-act="clear-all">Puzzle &amp; Timer</button>
+        </div>
+      </div>
+      <div class="menu-wrap">
+        <button class="toolbtn" id="revealBtn" aria-haspopup="true" aria-expanded="false">Reveal</button>
+        <div class="menu" id="revealMenu" hidden>
+          <button data-act="reveal-square">Square</button>
+          <button data-act="reveal-word">Word</button>
+          <button data-act="reveal-puzzle">Puzzle</button>
+        </div>
+      </div>
+      <div class="menu-wrap">
+        <button class="toolbtn" id="checkBtn" aria-haspopup="true" aria-expanded="false">Check</button>
+        <div class="menu" id="checkMenu" hidden>
+          <button data-act="check-square">Square</button>
+          <button data-act="check-word">Word</button>
+          <button data-act="check-puzzle">Puzzle</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <main class="play" id="play">
+    <div class="board-col">
+      <div class="cluebar" id="cluebar"><span class="lab"></span><span class="txt"></span></div>
+      <div class="board" id="board" role="grid" aria-label="Crossword grid"></div>
+    </div>
+    <div class="clues">
+      <section class="cluelist"><h2>Across</h2><ol id="acrossList"></ol></section>
+      <section class="cluelist"><h2>Down</h2><ol id="downList"></ol></section>
+    </div>
+    <div class="cover" id="cover" hidden>
+      <div class="cover-card">
+        <svg class="flower" viewBox="-50 -50 100 100" aria-hidden="true"></svg>
+        <div class="eyebrow" id="coverEyebrow">For Mamusia</div>
+        <h2 id="coverTitle">Ready to get started?</h2>
+        <p id="coverText">A full-size, 15×15 puzzle made just for you. The timer starts when you press play.</p>
+        <button class="pill" id="coverBtn">Play</button>
+      </div>
+    </div>
+  </main>
+
+  <p class="hint">Click a square to start typing. Click it again or press <kbd>Space</kbd> to switch between Across and Down.
+    <kbd>Tab</kbd> jumps to the next clue, <kbd>Shift</kbd>+<kbd>Tab</kbd> goes back, and the arrow keys move around the grid.</p>
+</div>
+
+<div class="kb" id="kb">
+  <div class="cluebar" id="kbClue">
+    <button class="iconbtn" id="kbPrev" aria-label="Previous clue"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M10.5 2.5 5 8l5.5 5.5" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+    <span class="lab"></span><span class="txt"></span>
+    <button class="iconbtn" id="kbNext" aria-label="Next clue"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 2.5 11 8l-5.5 5.5" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+  </div>
+  <div class="rows" id="kbRows"></div>
+</div>
+
+<div class="modal-bg" id="modalBg" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="cover-card" style="padding:0;gap:0"><div class="eyebrow" id="modalEyebrow"></div></div>
+    <h2 id="modalTitle"></h2>
+    <p id="modalText"></p>
+    <div class="btns" id="modalBtns"></div>
+  </div>
+</div>
+
+<canvas id="confetti" hidden></canvas>
+
+<script>
+const D = {"w": 15, "h": 15, "g": "QklHI09QUyMjI1NOQVJMVU5PI0JBTkcjSVRBTElBR09FU0FXT0wjREVKQVZVU1RSVU0jV0VWRSNMSUVEIyMjQkFETkVXU0JFQVJTQVNFI1NSQSNTVEVQIyMjQkFCQSNBRE8jI0FTSUNTQ1JPU1NXT1JEUFVaWkxFU0FZT04jI0JPTyNBWlVMIyMjTk9URSNHUEEjWUVBVElNRVdJTExURUxMIyMjQUNJRCNMSUFSI0FPUlRBU0lMT0VEI1RFQVNQT09OSEVMRU5BI1NBQ0sjU1JJQVJJU0UjIyNURUEjRVRB", "across": [[1, "With 13-Across, current Krueger family show", 0, 0, 3], [4, "Baseball hitting stat combined from OBP and SLG", 4, 0, 3], [7, "What Alaska might do when trying to scare someone", 10, 0, 5], [12, "One, to Reina", 0, 1, 3], [13, "See 1 across", 4, 1, 4], [15, "Home of Florence and Venice, natively", 9, 1, 6], [16, "Skips duty without leave (2 words)", 0, 2, 8], [18, "\"Haven't we been here before?\" feeling (2 words)", 9, 2, 6], [19, "Run fingers across guitar strings", 0, 3, 5], [20, "\"___ come a long way!\"", 6, 3, 4], [22, "Spoke untruthfully", 11, 3, 4], [23, "Prequel to Leonard Goldberg baseball film", 3, 4, 12], [26, "Snowmass airport (Abbr.)", 0, 5, 3], [29, "Mrs., in Madrid", 4, 5, 3], [30, "Action taken by a pedestrian", 8, 5, 4], [31, "Polish gal or dame, colloquially", 0, 6, 4], [33, "Word after \"without further\"", 5, 6, 3], [35, "Running shoe brand named for a Latin acronym", 10, 6, 5], [39, "What this is", 0, 7, 15], [43, "\"Go ahead and speak\" (2 words)", 0, 8, 5], [44, "Sound made by Magda when scaring Broniu", 7, 8, 3], [45, "Blue, in Barcelona", 11, 8, 4], [46, "Pitch produced by a piano key", 3, 9, 4], [49, "Broniu's in college is 4.0", 8, 9, 3], [51, "Pro vote in Congress", 12, 9, 3], [52, "\"Wait and see\" (3 words)", 0, 10, 12], [57, "Vinegar or lemon juice, chemically", 0, 11, 4], [58, "Pinocchio, when his nose grows", 5, 11, 4], [59, "Main artery of the human body", 10, 11, 5], [63, "Operating in isolation, as company departments", 0, 12, 6], [65, "One-third of a tablespoon", 7, 12, 8], [67, "Broniu's prababcia", 0, 13, 6], [68, "Tackle the quarterback behind the line of scrimmage", 7, 13, 4], [69, "Word before Lanka", 12, 13, 3], [70, "Stand up", 0, 14, 5], [71, "Magda's nighttime drink of choice", 8, 14, 3], [72, "GPS prediction: Abbr.", 12, 14, 3]], "down": [[1, "What Fred does to Magda", 0, 0, 4], [2, "Playing an extra period (2 words)", 1, 0, 4], [3, "Theater-___ (play fan)", 2, 0, 4], [4, "Michelle and Barack, collectively", 4, 0, 6], [5, "Hand, to Alaska", 5, 0, 3], [6, "Rare winter vortex that whips up powder", 6, 0, 8], [7, "French holy woman: Abbr.", 10, 0, 3], [8, "Appropriate nickname for Magda from Broniu", 11, 0, 9], [9, "Tunisian fashion designer Azzedine", 12, 0, 5], [10, "Lassoff who is Broniu's friend", 13, 0, 5], [11, "Praises highly", 14, 0, 5], [14, "High-spirited happiness", 7, 1, 4], [15, "Latin for \"that is\" (2 words)", 9, 1, 5], [17, "Predecessor to standard or zero", 3, 2, 3], [21, "German automaker's cars, for short", 8, 3, 3], [24, "Illustrate by hand", 5, 4, 4], [25, "Romantic partner, old-style", 10, 4, 4], [26, "Fundamental principles", 0, 5, 4], [27, "Starship 80s hit with the lyric \"No time is a good time for goodbyes\"", 1, 5, 4], [28, "E-girl counterpart: ___", 2, 5, 4], [32, "\"Naturally\" (3 words)", 3, 6, 9], [34, "Perfect three-dimensional sphere", 7, 6, 3], [36, "Familiar diminutive for Isabel or Isabella", 12, 6, 4], [37, "This very prompt!", 13, 6, 4], [38, "Two-time Primetime Emmy winner Ward", 14, 6, 4], [40, "What Alaska will see for the first time in Aspen", 4, 7, 4], [41, "What we give Alaska when she is a good girl", 8, 7, 8], [42, "Bishop of Rome", 9, 7, 4], [47, "Oscar winner Swinton", 5, 9, 5], [48, "Industrialist Whitney", 6, 9, 3], [50, "The best dog ever", 10, 9, 6], [52, "Star Trek: The Next Generation security chief Yar", 0, 10, 5], [53, "More slippery, as winter roads", 1, 10, 5], [54, "First half of an infamous pop lip-syncing duo", 2, 10, 5], [55, "Back muscles worked by pull-ups, casually", 7, 10, 4], [56, "Bunny variety with hanging ears", 11, 10, 3], [60, "___ and thorn", 12, 11, 4], [61, "Subject covering negligence, battery, and libel", 13, 11, 4], [62, "Madga's mom", 14, 11, 4], [64, "Wind heading opposite WSW", 4, 12, 3], [66, "What Broniu does to every test he takes", 9, 12, 3]]};
+const W = D.w, H = D.h;
+const ANS = atob(D.g);
+const KEY = 'mamusia-xword-1';
+const $ = id => document.getElementById(id);
+
+// ---------- model ----------
+const cells = [];
+for (let i = 0; i < W * H; i++) cells.push({ i, r: Math.floor(i / W), c: i % W, ans: ANS[i], block: ANS[i] === '#', num: null, across: null, down: null });
+const clues = { across: [], down: [] };
+for (const dir of ['across', 'down']) {
+  for (const [n, text, x, y, len] of D[dir]) {
+    const list = [];
+    for (let k = 0; k < len; k++) list.push(dir === 'across' ? y * W + x + k : (y + k) * W + x);
+    const clue = { n, text, dir, cells: list, refs: [] };
+    cells[list[0]].num = n;
+    list.forEach(ci => cells[ci][dir] = clue);
+    clues[dir].push(clue);
+  }
+}
+const allClues = clues.across.concat(clues.down);
+// cross-references like "64-Across" or "See 52 down"
+for (const cl of allClues) {
+  for (const m of cl.text.matchAll(/(\d+)[\s-]+(across|down)/gi)) {
+    const t = clues[m[2].toLowerCase()].find(x => x.n === +m[1]);
+    if (t && t !== cl) cl.refs.push(t);
+  }
+}
+
+let entries = Array(W * H).fill('');
+let marks = Array(W * H).fill(null); // 'correct' | 'wrong' | 'revealed'
+let elapsed = 0, startAt = null, started = false, solved = false, warnedFull = false;
+let cur = { idx: clues.across[0].cells[0], dir: 'across' };
+
+function load(s) {
+  if (!s || !Array.isArray(s.entries) || s.entries.length !== W * H) return;
+  entries = s.entries; marks = s.marks || marks; elapsed = s.elapsed || 0; solved = !!s.solved; started = !!s.started;
+}
+function snapshot() { return { entries, marks, elapsed: time(), solved, started }; }
+try { load(JSON.parse(localStorage.getItem(KEY) || 'null')); } catch (e) {}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(snapshot())); } catch (e) {} }
+
+const locked = i => marks[i] === 'correct' || marks[i] === 'revealed' || solved;
+const clueOf = (i, dir) => cells[i][dir];
+const curClue = () => clueOf(cur.idx, cur.dir);
+
+// ---------- build DOM ----------
+const board = $('board');
+board.style.setProperty('--w', W); board.style.setProperty('--h', H);
+const cellEls = cells.map(cell => {
+  const el = document.createElement('div');
+  el.className = 'cell' + (cell.block ? ' block' : '');
+  el.setAttribute('role', 'gridcell');
+  if (!cell.block) {
+    if (cell.num) { const n = document.createElement('span'); n.className = 'num'; n.textContent = cell.num; el.appendChild(n); }
+    const l = document.createElement('span'); l.className = 'let'; el.appendChild(l); cell.letEl = l;
+    el.addEventListener('pointerdown', e => { e.preventDefault(); onCellTap(cell.i); });
+  }
+  board.appendChild(el);
+  return el;
+});
+for (const dir of ['across', 'down']) {
+  const ol = $(dir + 'List');
+  for (const cl of clues[dir]) {
+    const li = document.createElement('li');
+    li.innerHTML = '<span class="n"></span><span class="t"></span>';
+    li.querySelector('.n').textContent = cl.n;
+    li.querySelector('.t').textContent = cl.text;
+    li.addEventListener('click', () => { if (!playable()) return; cur = { idx: firstEmpty(cl), dir }; render(); });
+    cl.li = li; ol.appendChild(li);
+  }
+}
+
+// ---------- render ----------
+function render() {
+  const cl = curClue();
+  const wordSet = new Set(cl ? cl.cells : []);
+  const refSet = new Set(cl ? cl.refs.flatMap(r => r.cells) : []);
+  cells.forEach((cell, i) => {
+    if (cell.block) return;
+    const el = cellEls[i];
+    el.classList.toggle('sel', i === cur.idx);
+    el.classList.toggle('word', wordSet.has(i) && i !== cur.idx);
+    el.classList.toggle('ref', refSet.has(i));
+    el.classList.toggle('correct', marks[i] === 'correct');
+    el.classList.toggle('wrong', marks[i] === 'wrong');
+    el.classList.toggle('revealed', marks[i] === 'revealed');
+    cell.letEl.textContent = entries[i];
+  });
+  const other = clueOf(cur.idx, cur.dir === 'across' ? 'down' : 'across');
+  for (const c of allClues) {
+    c.li.classList.toggle('active', c === cl);
+    c.li.classList.toggle('cross', c === other);
+    c.li.classList.toggle('ref', !!cl && cl.refs.includes(c));
+    c.li.classList.toggle('done', c.cells.every(i => entries[i]));
+  }
+  for (const bar of [$('cluebar'), $('kbClue')]) {
+    bar.querySelector('.lab').textContent = cl ? cl.n + (cl.dir === 'across' ? 'A' : 'D') : '';
+    bar.querySelector('.txt').textContent = cl ? cl.text : '';
+  }
+  for (const c of [cl, other]) if (c) scrollClue(c.li);
+}
+function scrollClue(li) {
+  const ol = li.parentElement;
+  const top = li.offsetTop - ol.offsetTop;
+  if (top < ol.scrollTop || top + li.offsetHeight > ol.scrollTop + ol.clientHeight) ol.scrollTop = top - ol.clientHeight / 3;
+}
+function syncListHeight() {
+  const h = board.getBoundingClientRect().height + $('cluebar').getBoundingClientRect().height + 12 - 36;
+  if (innerWidth > 900) document.documentElement.style.setProperty('--list-h', Math.max(300, h) + 'px');
+  else document.documentElement.style.removeProperty('--list-h');
+}
+
+// ---------- navigation ----------
+function firstEmpty(cl) { return cl.cells.find(i => !entries[i] && !locked(i)) ?? cl.cells[0]; }
+function setDir(dir) { if (clueOf(cur.idx, dir)) cur.dir = dir; }
+function onCellTap(i) {
+  if (!playable()) return;
+  if (i === cur.idx) setDir(cur.dir === 'across' ? 'down' : 'across');
+  else { cur.idx = i; if (!clueOf(i, cur.dir)) cur.dir = cur.dir === 'across' ? 'down' : 'across'; }
+  render();
+}
+function jumpClue(delta) {
+  const k = allClues.indexOf(curClue());
+  const next = allClues[(k + delta + allClues.length) % allClues.length];
+  cur = { idx: firstEmpty(next), dir: next.dir };
+}
+function move(dr, dc) {
+  let r = cells[cur.idx].r, c = cells[cur.idx].c;
+  while (true) {
+    r += dr; c += dc;
+    if (r < 0 || r >= H || c < 0 || c >= W) return;
+    if (!cells[r * W + c].block) { cur.idx = r * W + c; return; }
+  }
+}
+function arrow(dir, dr, dc) {
+  if (cur.dir !== dir && clueOf(cur.idx, dir)) { cur.dir = dir; return; }
+  move(dr, dc);
+}
+function advance() {
+  const cl = curClue(), list = cl.cells, k = list.indexOf(cur.idx);
+  const empties = list.filter(i => !entries[i] && !locked(i));
+  if (!empties.length) {
+    if (k < list.length - 1) cur.idx = list[k + 1];
+    else jumpClue(1);
+    return;
+  }
+  cur.idx = list.slice(k + 1).find(i => !entries[i] && !locked(i)) ?? empties[0];
+}
+function typeLetter(ch) {
+  if (!locked(cur.idx)) { entries[cur.idx] = ch; if (marks[cur.idx] === 'wrong') marks[cur.idx] = null; }
+  advance(); changed();
+}
+function backspace() {
+  if (entries[cur.idx] && !locked(cur.idx)) { entries[cur.idx] = ''; marks[cur.idx] = null; changed(); return; }
+  const cl = curClue(), k = cl.cells.indexOf(cur.idx);
+  if (k > 0) cur.idx = cl.cells[k - 1];
+  else { const j = allClues.indexOf(cl); const prev = allClues[(j - 1 + allClues.length) % allClues.length]; cur = { idx: prev.cells[prev.cells.length - 1], dir: prev.dir }; }
+  if (!locked(cur.idx)) { entries[cur.idx] = ''; marks[cur.idx] = null; }
+  changed();
+}
+
+// ---------- check / reveal / clear ----------
+function scope(kind) {
+  if (kind === 'square') return [cur.idx];
+  if (kind === 'word') return curClue().cells;
+  return cells.filter(c => !c.block).map(c => c.i);
+}
+function check(kind) { for (const i of scope(kind)) if (entries[i] && marks[i] !== 'revealed') marks[i] = entries[i] === cells[i].ans ? 'correct' : 'wrong'; changed(); }
+function reveal(kind) { for (const i of scope(kind)) { if (entries[i] !== cells[i].ans) { entries[i] = cells[i].ans; marks[i] = 'revealed'; } else if (marks[i] !== 'revealed') marks[i] = 'correct'; } changed(); }
+function clear(kind, timerToo) {
+  if (solved && kind !== 'all') return;
+  for (const i of scope(kind === 'all' ? 'puzzle' : kind)) {
+    if (kind === 'all') { entries[i] = ''; marks[i] = null; }
+    else if (!locked(i)) { entries[i] = ''; marks[i] = null; }
+  }
+  if (timerToo) { solved = false; warnedFull = false; elapsed = 0; startAt = started ? performance.now() : null; cur = { idx: clues.across[0].cells[0], dir: 'across' }; }
+  changed();
+}
+
+function changed() {
+  render(); save();
+  if (solved) return;
+  const white = cells.filter(c => !c.block);
+  if (white.every(c => entries[c.i])) {
+    if (white.every(c => entries[c.i] === c.ans)) win();
+    else if (!warnedFull) { warnedFull = true; showModal({ eyebrow: 'So close', title: 'Not quite yet', text: 'Every square is filled, but at least one letter is off. Keep at it, or use Check to find the culprit.', buttons: [['Keep trying', closeModal]] }); }
+  } else warnedFull = false;
+}
+
+// ---------- timer ----------
+const time = () => elapsed + (startAt ? performance.now() - startAt : 0);
+function fmt(ms) {
+  const s = Math.floor(ms / 1000), h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, sec = s % 60;
+  return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(sec).padStart(2, '0');
+}
+setInterval(() => { $('time').textContent = fmt(time()); }, 250);
+setInterval(() => { if (startAt) save(); }, 5000);
+function run() { if (!startAt && !solved) startAt = performance.now(); }
+function halt() { if (startAt) { elapsed += performance.now() - startAt; startAt = null; } save(); }
+const playable = () => started && startAt !== null || solved;
+
+// ---------- cover / pause ----------
+function showCover(kind) {
+  const resume = kind === 'pause' || kind === 'resume';
+  $('coverEyebrow').textContent = resume ? fmt(time()) + ' on the clock' : 'For Mamusia';
+  $('coverTitle').textContent = kind === 'pause' ? 'Your puzzle is paused' : kind === 'resume' ? 'Welcome back' : 'Ready to get started?';
+  $('coverText').textContent = resume ? 'Pick up right where you left off.' : 'A full-size, 15×15 puzzle made just for you. The timer starts when you press play.';
+  $('coverBtn').textContent = resume ? 'Resume' : 'Play';
+  $('cover').hidden = false;
+}
+$('coverBtn').addEventListener('click', () => { $('cover').hidden = true; started = true; run(); render(); save(); });
+$('pauseBtn').addEventListener('click', () => { if (solved || !startAt) return; halt(); showCover('pause'); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && startAt) { halt(); showCover('pause'); } });
+
+// ---------- menus ----------
+const menus = [['clearBtn', 'clearMenu'], ['revealBtn', 'revealMenu'], ['checkBtn', 'checkMenu']];
+function closeMenus() { menus.forEach(([b, m]) => { $(m).hidden = true; $(b).setAttribute('aria-expanded', 'false'); }); }
+menus.forEach(([b, m]) => $(b).addEventListener('click', e => {
+  e.stopPropagation(); const open = $(m).hidden; closeMenus();
+  if (open) { $(m).hidden = false; $(b).setAttribute('aria-expanded', 'true'); }
+}));
+document.addEventListener('click', closeMenus);
+document.querySelectorAll('.menu button').forEach(btn => btn.addEventListener('click', e => {
+  e.stopPropagation(); closeMenus();
+  if (!playable()) return;
+  const [verb, kind] = btn.dataset.act.split('-');
+  if (verb === 'check') check(kind);
+  else if (verb === 'reveal' && kind === 'puzzle') showModal({ eyebrow: 'Reveal puzzle', title: 'Show every answer?', text: 'This fills in the whole grid. It can’t be undone.', buttons: [['Cancel', closeModal, true], ['Reveal', () => { closeModal(); reveal('puzzle'); }]] });
+  else if (verb === 'reveal') reveal(kind);
+  else if (kind === 'all') showModal({ eyebrow: 'Start over', title: 'Clear the puzzle and timer?', text: 'All your letters and your time will be erased.', buttons: [['Cancel', closeModal, true], ['Clear', () => { closeModal(); clear('all', true); }]] });
+  else clear(kind);
+}));
+
+// ---------- modal ----------
+function showModal({ eyebrow, title, text, buttons }) {
+  $('modalEyebrow').textContent = eyebrow; $('modalTitle').textContent = title; $('modalText').textContent = text;
+  const box = $('modalBtns'); box.innerHTML = '';
+  for (const [label, fn, ghost] of buttons) { const b = document.createElement('button'); b.className = 'pill' + (ghost ? ' ghost' : ''); b.textContent = label; b.addEventListener('click', fn); box.appendChild(b); }
+  $('modalBg').hidden = false; box.lastChild.focus();
+}
+function closeModal() { $('modalBg').hidden = true; }
+$('modalBg').addEventListener('click', e => { if (e.target === $('modalBg')) closeModal(); });
+
+function win() {
+  halt(); solved = true; save(); render();
+  const revealedAny = marks.some(m => m === 'revealed');
+  showModal({ eyebrow: 'Solved in ' + fmt(elapsed), title: 'You did it, Mamusia!',
+    text: revealedAny ? 'You got there, with a little help. Every square is filled in.' : 'Every square, all on your own. Nicely done.',
+    buttons: [['Admire the grid', closeModal]] });
+  confetti();
+}
+
+// ---------- keyboard ----------
+document.addEventListener('keydown', e => {
+  if (!$('modalBg').hidden) { if (e.key === 'Escape' || e.key === 'Enter') { e.preventDefault(); closeModal(); } return; }
+  if (e.metaKey || e.ctrlKey || e.altKey || !playable() || solved) return;
+  const k = e.key;
+  if (/^[a-zA-Z]$/.test(k)) typeLetter(k.toUpperCase());
+  else if (k === 'Backspace' || k === 'Delete') backspace();
+  else if (k === 'ArrowLeft') arrow('across', 0, -1);
+  else if (k === 'ArrowRight') arrow('across', 0, 1);
+  else if (k === 'ArrowUp') arrow('down', -1, 0);
+  else if (k === 'ArrowDown') arrow('down', 1, 0);
+  else if (k === 'Tab') jumpClue(e.shiftKey ? -1 : 1);
+  else if (k === 'Enter') jumpClue(e.shiftKey ? -1 : 1);
+  else if (k === ' ') setDir(cur.dir === 'across' ? 'down' : 'across');
+  else return;
+  e.preventDefault(); render();
+});
+
+// on-screen keyboard for touch devices
+if (matchMedia('(pointer: coarse)').matches) document.body.classList.add('touch');
+['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM⌫'].forEach(row => {
+  const div = document.createElement('div'); div.className = 'row';
+  for (const ch of row) {
+    const b = document.createElement('button'); b.className = 'key' + (ch === '⌫' ? ' wide' : '');
+    if (ch === '⌫') { b.setAttribute('aria-label', 'Delete'); b.innerHTML = '<svg width="24" height="18" viewBox="0 0 24 18" aria-hidden="true"><path d="M8 1h14v16H8L1 9z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 5.5l7 7m0-7l-7 7" stroke="currentColor" stroke-width="1.8"/></svg>'; }
+    else b.textContent = ch;
+    b.addEventListener('pointerdown', e => { e.preventDefault(); if (!playable() || solved) return; ch === '⌫' ? backspace() : typeLetter(ch); render(); });
+    div.appendChild(b);
+  }
+  $('kbRows').appendChild(div);
+});
+$('kbPrev').addEventListener('click', e => { e.stopPropagation(); if (playable()) { jumpClue(-1); render(); } });
+$('kbNext').addEventListener('click', e => { e.stopPropagation(); if (playable()) { jumpClue(1); render(); } });
+$('kbClue').addEventListener('click', () => { if (playable()) { setDir(cur.dir === 'across' ? 'down' : 'across'); render(); } });
+
+// ---------- confetti ----------
+function confetti(count = 170) {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const cv = $('confetti'), ctx = cv.getContext('2d'); cv.hidden = false;
+  const dpr = devicePixelRatio || 1; cv.width = innerWidth * dpr; cv.height = innerHeight * dpr; ctx.scale(dpr, dpr);
+  const colors = ['#ffda00', '#a7d8ff', '#4f85e5', '#e63333', '#6bc56b', '#ff9bd2'];
+  const ps = Array.from({ length: count }, () => ({ x: innerWidth / 2 + (Math.random() - .5) * 200, y: innerHeight * .35, vx: (Math.random() - .5) * 14, vy: -Math.random() * 14 - 4,
+    s: 6 + Math.random() * 6, a: Math.random() * 6, va: (Math.random() - .5) * .4, c: colors[Math.floor(Math.random() * colors.length)] }));
+  const t0 = performance.now();
+  (function frame(t) {
+    ctx.clearRect(0, 0, innerWidth, innerHeight);
+    for (const p of ps) { p.vy += .32; p.vx *= .99; p.x += p.vx; p.y += p.vy; p.a += p.va;
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.a); ctx.fillStyle = p.c; ctx.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2); ctx.restore(); }
+    if (t - t0 < 4000) requestAnimationFrame(frame); else { cv.hidden = true; }
+  })(t0);
+}
+
+// ---------- decorations ----------
+(function flower() {
+  const petal = (a, len, wid, color) => `<path transform="rotate(${a})" d="M0 -10 C${wid} -${len * .45} ${wid * .7} -${len * .85} 0 -${len} C-${wid * .7} -${len * .85} -${wid} -${len * .45} 0 -10Z" fill="${color}"/>`;
+  let g = '';
+  [135, 225].forEach(a => g += petal(a, 46, 13, 'var(--party-4)'));
+  for (let k = 0; k < 8; k++) g += petal(k * 45, 40, 12, k % 2 ? 'var(--party-5)' : 'var(--party-3)');
+  for (let k = 0; k < 8; k++) g += petal(k * 45 + 22.5, 24, 7, 'var(--party-1)');
+  g += '<circle r="12" fill="var(--party-2)"/><circle r="6.5" fill="var(--party-1)"/><circle r="2.6" fill="var(--party-3)"/>';
+  document.querySelectorAll('.flower').forEach(svg => svg.innerHTML = g);
+})();
+
+// ---------- boot ----------
+addEventListener('resize', syncListHeight);
+render(); syncListHeight();
+if (document.fonts) document.fonts.ready.then(syncListHeight);
+if (!solved) showCover(started ? 'resume' : 'start');
+</script>
+</body>
+</html>
